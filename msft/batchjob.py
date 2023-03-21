@@ -2,6 +2,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from google.cloud import bigquery
 import re, csv
+from beam_nuggets.io import relational_db
 import logging
 import sys
 
@@ -38,16 +39,27 @@ def parse_file(element):
 
 def main():
 
-   p = beam.Pipeline(options=PipelineOptions())
+   with beam.Pipeline(options=PipelineOptions()) as p:
+       source_config = relational_db.SourceConfiguration(
+            drivername='postgresql+pg8000',
+            host='localhost',
+            port=5432,
+            username='admin',
+            password='admin',
+            database='test',
+        )
 
-   (p
-      | 'ReadData' >> beam.io.textio.ReadFromText(src_path)
-      | 'ParseCSV' >> beam.ParDo(parse_file())
-      | 'WriteToBigQuery' >> beam.io.WriteToBigQuery('{0}:msft.trading_data'.format(PROJECT), schema=schema,
-        write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND)
-   )
+       (p
+          | 'ReadData' >> beam.io.textio.ReadFromText(src_path)
+          |"Reading records from db" >> relational_db.Read(
+            source_config=source_config,
+            table_name='trading',)
+          | 'ParseCSV' >> beam.ParDo(parse_file())
+          | 'WriteToBigQuery' >> beam.io.WriteToBigQuery('{0}:msft.trading_data'.format(PROJECT), schema=schema,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND)
+       )
 
-   p.run()
+       p.run()
 
 if __name__ == '__main__':
   logger = logging.getLogger().setLevel(logging.INFO)

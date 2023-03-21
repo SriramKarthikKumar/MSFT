@@ -49,3 +49,5 @@ CREATE TABLE calculations
 )
 
 ----------------------------------------------------------------------------------------------
+
+-- Queries to find our weekly, monthly, quarterly, yearly averages of
